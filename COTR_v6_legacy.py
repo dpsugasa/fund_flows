@@ -13,15 +13,16 @@ import pandas as pd
 import numpy as np
 from datetime import datetime #for dates
 import quandl #for data
-quandl.ApiConfig.api_key = '#####' #insert personal API Key
+#quandl.ApiConfig.api_key = '#####' #insert personal API Key
 import plotly
 import plotly.plotly as py #for plotting
 import plotly.graph_objs as go
 import plotly.dashboard_objs as dashboard
-plotly.tools.set_credentials_file(username='#####', api_key='#####') #insert personal plotly credentials
+#plotly.tools.set_credentials_file(username='#####', api_key='#####') #insert personal plotly credentials
 import plotly.tools as tls
 import plotly.figure_factory as ff
-tls.embed('https://plot.ly/######/1/') #insert personal username
+#tls.embed('https://plot.ly/######/1/') #insert personal username
+import credentials
 
 
 #set the script start time
@@ -135,7 +136,7 @@ dboard = dashboard.Dashboard()
 box_1 = {
         'type' : 'box',
         'boxType':'plot',
-        'fileId': 'dpsugasa:888',
+        'fileId': 'dpsugasa:1704',
         'shareKey': None,
         'title': 'COTR Positioning Z-Scores'
 }
