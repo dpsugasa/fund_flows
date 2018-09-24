@@ -50,14 +50,13 @@ d_fx = LocalTerminal.get_historical(fx, fields_fx, start_date, end_date, period 
                                          non_trading_day_fill_method = 'PREVIOUS_VALUE').as_frame()
 d_fx.columns = d_fx.columns.droplevel(-1)
 d_fx = d_fx.rename(columns = {'EURUSD Curncy':'EUR',
-                                      'GBPUSD Curncy':'GBP'})
+                              'GBPUSD Curncy':'GBP'})
 d_fx['USD'] = 1.0
-#d_fx = d_fx.to_dict()
 
 
 d = {} #dict of original dataframes per asset class
 m = {} #dict of ref data
-z = {} #list of lists for data matrix 2
+b = {} #list of lists for data matrix 2
 idx = pd.IndexSlice
 
 for i, v in q.items():
@@ -75,6 +74,12 @@ for i, v in q.items():
     d[i]['fx'] = m[i]['FUND_TOTAL_ASSETS_CRNCY'].loc[d[i].index.get_level_values(0)].values
     d[i]['rate'] = d_fx.lookup(d[i].index.get_level_values(1), d[i]['fx'])
     d[i]['$Assets'] = d[i]['rate']*d[i]['Assets']
+    for z in range(1,11):
+        d[i][f'Loc_Diff-{z}'] = d[i]['Assets'].diff(z)
+        d[i][f'$_Diff-{z}'] = d[i]['$Assets'].diff(z)
+        b[f'tot_diff{z}'] = d[i][f'$_Diff-{z}'].sum()
+
+    
     
     
     #d[i].columns = d[i].columns.droplevel(-1)
