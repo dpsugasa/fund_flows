@@ -24,6 +24,7 @@ import credentials #plotly API details
 
 #set the script start time
 start_time = datetime.now()
+date_now =  "{:%m_%d_%Y}".format(datetime.now())
 
 # set dates, securities, and fields
 start_date = '01/01/2012'
@@ -37,7 +38,7 @@ oe = oe['Ticker'].values.tolist()
 fx = ['EURUSD Curncy', 'GBPUSD Curncy']
 
 q = {'open_end': oe,
-     'booty': oe
+     #'booty': oe
      
      }
 
@@ -102,6 +103,10 @@ for i, v in q.items():
     r[i] = r[i].fillna(0).apply(sum, axis=1).to_frame()
     r[i].columns = ['total_diff']
     r[i]['cum_diff'] = r[i]['total_diff'].cumsum()
+    r[i]['scr_1y'] = (r[i]['total_diff'] - r[i]['total_diff'].rolling('365d').mean())/ \
+                        r[i]['total_diff'].rolling('365d').std()
+    r[i]['scr_3y'] = (r[i]['total_diff'] - r[i]['total_diff'].rolling('180d').mean())/ \
+                        r[i]['total_diff'].rolling('180d').std()
     
     #create weekly changes
     u[i] = r[i]['total_diff'].resample('W').sum().to_frame()
@@ -113,18 +118,73 @@ for i, v in q.items():
     pq[i].columns = ['tot_diff_mthly']
     pq[i]['cum_chg_mthly'] = pq[i]['tot_diff_mthly'].cumsum()
     
-    #create monthly changes
+    #create quaeterly changes
     ip[i] = r[i]['total_diff'].resample('BQ').sum().to_frame()
     ip[i].columns = ['tot_diff_qtrly']
     ip[i]['cum_chg_qtrly'] = ip[i]['tot_diff_qtrly'].cumsum()
-    
-    
+       
     #create business yearly changes
     lp[i] = r[i]['total_diff'].resample('BY').sum().to_frame()
     lp[i].columns = ['tot_diff_yearly']
     lp[i]['cum_chg_yearly'] = lp[i]['tot_diff_yearly'].cumsum()
                  
+#create plots        
+    #if d[i]['scr_1y'].tail(1).item() >= 2.0 or d[i]['scr_1y'].tail(1).item() <= -2.0:
+        #plot the historical 1 year z-score
+    trace1 = go.Bar(
+                    x = r[i]['total_diff'].index,
+                    y = r[i]['scr_1y'].values,
+                    name = 'Daily Change',
+#                    line = dict(
+#                                color = ('#4155f4'),
+#                                width = 1.5)
+                    ) 
+
+    trace2 = go.Scatter(
+                        x = r[i]['total_diff'].index,
+                        y = r[i]['total_diff'].rolling(window=90).std()*np.sqrt(252),
+                        name = '90d volatility',
+                        yaxis = 'y2',
+                        line = dict(
+                                    color = ('#4155f4'),
+                                    width = 1.5)
+    
+    )       
         
+    layout  = {'title' : f'{i} daily change - {date_now}',
+                   'xaxis' : {'title' : 'Date', 'type': 'date'},
+                   'yaxis' : {'title' : 'Z-Score'},
+                   'yaxis2' : {'title' : 'Volatility',
+                               'overlaying' : 'y',
+                               'side'   : 'right'},
+                   'shapes': [{'type': 'rect',
+                              'x0': r[i]['scr_1y'].index[0],
+                              'y0': -2,
+                              'x1': r[i]['scr_1y'].index[-1],
+                              'y1': 2,
+                              'name': 'Z-range',
+                              'line': {
+                                      'color': '#f48641',
+                                      'width': 2,},
+                                      'fillcolor': '#f4ad42',
+                                      'opacity': 0.25,
+                                      },]
+                   }
+    
+    data = [trace1, trace2]
+    figure = go.Figure(data=data, layout=layout)
+    py.iplot(figure, filename = f'fund_flow/{date_now}/{i}/Daily Change')
+
+
+
+
+
+
+
+
+
+
+
 print ("Time to complete:", datetime.now() - start_time)
 
 
