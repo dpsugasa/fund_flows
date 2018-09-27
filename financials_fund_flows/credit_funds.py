@@ -90,12 +90,17 @@ for i, v in q.items():
     f[i] = f[i].swaplevel(1,0,axis=1)
     f[i] = f[i].drop(['fx', 'rate'], axis=1, level=1)
     f[i] = f[i].stack(0)
-        
-    b['assets_pct_chg'] = f[i]['Assets'].unstack().pct_change()
-    p['$assets_pct_chg'] = f[i]['$Assets'].unstack().pct_change()
-    f[i]['assets_pct_chg'] = b['assets_pct_chg'].stack()
-    f[i]['$assets_pct_chg'] = p['$assets_pct_chg'].stack()
-        
+    
+    b[i] = f[i]['$Assets'].unstack().fillna(0).apply(sum, axis=1).to_frame()
+    b[i].columns = ['tot_$assets']
+    b[i]['$assets_pct_chg'] = b[i]['tot_$assets'].pct_change()
+    b[i]['$assets_log_chg'] = np.log(1 + b[i]['tot_$assets'].pct_change())
+    b[i]['$diff'] = b[i]['tot_$assets'].diff()
+            
+#    p['$assets_pct_chg'] = f[i]['$Assets'].unstack().pct_change()
+#    f[i]['assets_pct_chg'] = b['assets_pct_chg'].stack()
+#    f[i]['$assets_pct_chg'] = p['$assets_pct_chg'].stack()
+ '''       
     r[i] = f[i][['$assets_pct_chg']].unstack() #.swaplevel(1,0, axis=1)
     r[i] = r[i].swaplevel(0,1,axis=1)
     r[i].columns = r[i].columns.droplevel(-1)
@@ -183,7 +188,7 @@ for i, v in q.items():
 
 
 
-
+'''
 print ("Time to complete:", datetime.now() - start_time)
 
 
