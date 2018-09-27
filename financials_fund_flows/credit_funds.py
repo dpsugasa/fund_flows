@@ -91,13 +91,12 @@ for i, v in q.items():
     f[i] = f[i].drop(['fx', 'rate'], axis=1, level=1)
     f[i] = f[i].stack(0)
         
-    for z in range(1,11):
-        b[f'assets_diff_{z}'] = f[i]['Assets'].unstack().diff(z)
-        p[f'$assets_diff_{z}'] = f[i]['$Assets'].unstack().diff(z)
-        f[i][f'Diff_{z}'] = b[f'assets_diff_{z}'].stack()
-        f[i][f'$Diff_{z}'] = p[f'$assets_diff_{z}'].stack()
+    b['assets_pct_chg'] = f[i]['Assets'].unstack().pct_change()
+    p['$assets_pct_chg'] = f[i]['$Assets'].unstack().pct_change()
+    f[i]['assets_pct_chg'] = b['assets_pct_chg'].stack()
+    f[i]['$assets_pct_chg'] = p['$assets_pct_chg'].stack()
         
-    r[i] = f[i][['$Diff_1']].unstack() #.swaplevel(1,0, axis=1)
+    r[i] = f[i][['$assets_pct_chg']].unstack() #.swaplevel(1,0, axis=1)
     r[i] = r[i].swaplevel(0,1,axis=1)
     r[i].columns = r[i].columns.droplevel(-1)
     r[i] = r[i].fillna(0).apply(sum, axis=1).to_frame()
@@ -142,8 +141,8 @@ for i, v in q.items():
 
     trace2 = go.Scatter(
                         x = r[i]['total_diff'].index,
-                        y = r[i]['total_diff'].rolling(window=90).std()*np.sqrt(252),
-                        name = '90d volatility',
+                        y = r[i]['total_diff'].rolling(window=90).var(),
+                        name = '90d Variance',
                         yaxis = 'y2',
                         line = dict(
                                     color = ('#4155f4'),
