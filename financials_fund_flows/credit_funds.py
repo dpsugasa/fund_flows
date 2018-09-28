@@ -26,6 +26,10 @@ import credentials #plotly API details
 start_time = datetime.now()
 date_now =  "{:%m_%d_%Y}".format(datetime.now())
 
+def zscore(series, time='365d'):
+    score =(series - series.rolling(window=time).mean())/series.rolling(window=time).std()
+    return score
+
 # set dates, securities, and fields
 start_date = '01/01/2012'
 end_date = "{:%m/%d/%Y}".format(datetime.now())
@@ -100,65 +104,65 @@ for i, v in q.items():
 #    p['$assets_pct_chg'] = f[i]['$Assets'].unstack().pct_change()
 #    f[i]['assets_pct_chg'] = b['assets_pct_chg'].stack()
 #    f[i]['$assets_pct_chg'] = p['$assets_pct_chg'].stack()
- '''       
-    r[i] = f[i][['$assets_pct_chg']].unstack() #.swaplevel(1,0, axis=1)
-    r[i] = r[i].swaplevel(0,1,axis=1)
-    r[i].columns = r[i].columns.droplevel(-1)
-    r[i] = r[i].fillna(0).apply(sum, axis=1).to_frame()
-    r[i].columns = ['total_diff']
-    r[i]['cum_diff'] = r[i]['total_diff'].cumsum()
-    r[i]['scr_1y'] = (r[i]['total_diff'] - r[i]['total_diff'].rolling('365d').mean())/ \
-                        r[i]['total_diff'].rolling('365d').std()
-    r[i]['scr_3y'] = (r[i]['total_diff'] - r[i]['total_diff'].rolling('180d').mean())/ \
-                        r[i]['total_diff'].rolling('180d').std()
-    
+      
+    #daily changes with zscores
+    r[i] = b[i][['$assets_log_chg', '$diff']]
+    r[i]['scr_1y'] = zscore(r[i]['$assets_log_chg'])
+    r[i]['scr_6m'] = zscore(r[i]['$assets_log_chg'], '180d')
+     
     #create weekly changes
-    u[i] = r[i]['total_diff'].resample('W').sum().to_frame()
-    u[i].columns = ['tot_diff_wkly']
-    u[i]['cum_chg_wkly'] = u[i]['tot_diff_wkly'].cumsum()
+    u[i] = b[i][['$assets_log_chg', '$diff']].resample('W').sum()
+    u[i]['scr_1y'] = zscore(u[i]['$assets_log_chg'])
+    u[i]['scr_6m'] = zscore(u[i]['$assets_log_chg'], '180d') 
     
     #create monthly changes
-    pq[i] = r[i]['total_diff'].resample('BM').sum().to_frame()
-    pq[i].columns = ['tot_diff_mthly']
-    pq[i]['cum_chg_mthly'] = pq[i]['tot_diff_mthly'].cumsum()
+    pq[i] = b[i][['$assets_log_chg', '$diff']].resample('BM').sum()
+    pq[i]['scr_1y'] = zscore(pq[i]['$assets_log_chg'])
+    pq[i]['scr_6m'] = zscore(pq[i]['$assets_log_chg'], '180d') 
     
     #create quaeterly changes
-    ip[i] = r[i]['total_diff'].resample('BQ').sum().to_frame()
-    ip[i].columns = ['tot_diff_qtrly']
-    ip[i]['cum_chg_qtrly'] = ip[i]['tot_diff_qtrly'].cumsum()
+    ip[i] = b[i][['$assets_log_chg', '$diff']].resample('BQ').sum()
+    ip[i]['scr_1y'] = zscore(ip[i]['$assets_log_chg'])
+     
        
     #create business yearly changes
-    lp[i] = r[i]['total_diff'].resample('BY').sum().to_frame()
-    lp[i].columns = ['tot_diff_yearly']
-    lp[i]['cum_chg_yearly'] = lp[i]['tot_diff_yearly'].cumsum()
-                 
-#create plots        
-    #if d[i]['scr_1y'].tail(1).item() >= 2.0 or d[i]['scr_1y'].tail(1).item() <= -2.0:
+    lp[i] = b[i][['$assets_log_chg', '$diff']].resample('BY').sum()
+
+    
+                
+#create plots
+    #if j[i]['scr_1y'].tail(1).item() >= 2.0 or d[i]['scr_1y'].tail(1).item() <= -2.0:
         #plot the historical 1 year z-score
     trace1 = go.Bar(
-                    x = r[i]['total_diff'].index,
+                    x = r[i]['$assets_log_chg'].index,
                     y = r[i]['scr_1y'].values,
                     name = 'Daily Change',
+                    #color = '#4155f4'
 #                    line = dict(
 #                                color = ('#4155f4'),
 #                                width = 1.5)
                     ) 
 
     trace2 = go.Scatter(
-                        x = r[i]['total_diff'].index,
-                        y = r[i]['total_diff'].rolling(window=90).var(),
-                        name = '90d Variance',
+                        x = b[i]['tot_$assets'].index,
+                        y = b[i]['tot_$assets'].values,
+                        name = 'Total Assets',
                         yaxis = 'y2',
                         line = dict(
-                                    color = ('#4155f4'),
-                                    width = 1.5)
+                                    color = ('#ccccff'),
+                                    width = 1.0,
+                                    ),
+                        fill = 'tonexty',
+                        opacity = 0.05,
+                       
+                        
     
     )       
         
     layout  = {'title' : f'{i} daily change - {date_now}',
                    'xaxis' : {'title' : 'Date', 'type': 'date'},
                    'yaxis' : {'title' : 'Z-Score'},
-                   'yaxis2' : {'title' : 'Volatility',
+                   'yaxis2' : {'title' : 'Assets',
                                'overlaying' : 'y',
                                'side'   : 'right'},
                    'shapes': [{'type': 'rect',
@@ -179,16 +183,112 @@ for i, v in q.items():
     figure = go.Figure(data=data, layout=layout)
     py.iplot(figure, filename = f'fund_flow/{date_now}/{i}/Daily Change')
 
+    trace1 = go.Bar(
+                    x = u[i]['$assets_log_chg'].index,
+                    y = u[i]['scr_1y'].values,
+                    name = 'Weekly Change',
+                    #color = '#4155f4'
+#                    line = dict(
+#                                color = ('#4155f4'),
+#                                width = 1.5)
+                    ) 
+
+    trace2 = go.Scatter(
+                        x = b[i]['tot_$assets'].index,
+                        y = b[i]['tot_$assets'].values,
+                        name = 'Total Assets',
+                        yaxis = 'y2',
+                        line = dict(
+                                    color = ('#ccccff'),
+                                    width = 1.0,
+                                    ),
+                        fill = 'tonexty',
+                        opacity = 0.05,
+                       
+                        
+    
+    )       
+        
+    layout  = {'title' : f'{i} weekly change - {date_now}',
+                   'xaxis' : {'title' : 'Date', 'type': 'date'},
+                   'yaxis' : {'title' : 'Z-Score'},
+                   'yaxis2' : {'title' : 'Assets',
+                               'overlaying' : 'y',
+                               'side'   : 'right'},
+                   'shapes': [{'type': 'rect',
+                              'x0': u[i]['scr_1y'].index[0],
+                              'y0': -2,
+                              'x1': u[i]['scr_1y'].index[-1],
+                              'y1': 2,
+                              'name': 'Z-range',
+                              'line': {
+                                      'color': '#f48641',
+                                      'width': 2,},
+                                      'fillcolor': '#f4ad42',
+                                      'opacity': 0.25,
+                                      },]
+                   }
+    
+    data = [trace1, trace2]
+    figure = go.Figure(data=data, layout=layout)
+    py.iplot(figure, filename = f'fund_flow/{date_now}/{i}/Weekly Change')
+
+
+    trace1 = go.Bar(
+                    x = pq[i]['$assets_log_chg'].index,
+                    y = pq[i]['scr_1y'].values,
+                    name = 'Monthly Change',
+                    #color = '#4155f4'
+#                    line = dict(
+#                                color = ('#4155f4'),
+#                                width = 1.5)
+                    ) 
+
+    trace2 = go.Scatter(
+                        x = b[i]['tot_$assets'].index,
+                        y = b[i]['tot_$assets'].values,
+                        name = 'Total Assets',
+                        yaxis = 'y2',
+                        line = dict(
+                                    color = ('#ccccff'),
+                                    width = 1.0,
+                                    ),
+                        fill = 'tonexty',
+                        opacity = 0.05,
+                       
+                        
+    
+    )       
+        
+    layout  = {'title' : f'{i} monthly change - {date_now}',
+                   'xaxis' : {'title' : 'Date', 'type': 'date'},
+                   'yaxis' : {'title' : 'Z-Score'},
+                   'yaxis2' : {'title' : 'Assets',
+                               'overlaying' : 'y',
+                               'side'   : 'right'},
+                   'shapes': [{'type': 'rect',
+                              'x0': pq[i]['scr_1y'].index[0],
+                              'y0': -2,
+                              'x1': pq[i]['scr_1y'].index[-1],
+                              'y1': 2,
+                              'name': 'Z-range',
+                              'line': {
+                                      'color': '#f48641',
+                                      'width': 2,},
+                                      'fillcolor': '#f4ad42',
+                                      'opacity': 0.25,
+                                      },]
+                   }
+    
+    data = [trace1, trace2]
+    figure = go.Figure(data=data, layout=layout)
+    py.iplot(figure, filename = f'fund_flow/{date_now}/{i}/Monthly Change')
 
 
 
 
 
 
-
-
-
-'''
 print ("Time to complete:", datetime.now() - start_time)
 
 
