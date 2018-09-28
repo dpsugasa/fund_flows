@@ -35,7 +35,7 @@ start_date = '01/01/2012'
 end_date = "{:%m/%d/%Y}".format(datetime.now())
 
 #read fund names from .csv
-oe = pd.read_csv(r'C:\Users\dpsugasa\WorkFiles\fund_flows\financials_fund_flows\open_end_all_curr_mini.csv',
+oe = pd.read_csv(r'C:\Users\dpsugasa\WorkFiles\fund_flows\financials_fund_flows\open_end_all_curr.csv',
                    parse_dates=True, infer_datetime_format=True)
 oe = oe['Ticker'].values.tolist()
 
