@@ -31,18 +31,23 @@ def zscore(series, time='365d'):
     score =(series - series.rolling(window=time).mean())/series.rolling(window=time).std()
     return score
 
+
 # set dates, securities, and fields
 start_date = '01/01/2012'
 end_date = "{:%m/%d/%Y}".format(datetime.now())
 
 #read fund names from .csv
-oe = pd.read_csv(r'C:\Users\dpsugasa\WorkFiles\fund_flows\financials_fund_flows\open_end_all_curr.csv',
+cb = pd.read_csv(r'C:\Users\dpsugasa\WorkFiles\fund_flows\cb_fund_flows\cb_all_curr.csv',
                    parse_dates=True, infer_datetime_format=True)
-oe = oe['Ticker'].values.tolist()
+cb = cb['Ticker'].values.tolist()
 
-fx = ['EURUSD Curncy', 'GBPUSD Curncy']
+fx = ['EURUSD Curncy',
+      'GBPUSD Curncy',
+      'CADUSD Curncy',
+      'JPYUSD Curncy',
+      'CHFUSD Curncy']
 
-q = {'open_end': oe,
+q = {'cb': cb,
      #'booty': oe
      
      }
@@ -57,7 +62,10 @@ d_fx = LocalTerminal.get_historical(fx, fields_fx, start_date, end_date, period 
                                          non_trading_day_fill_method = 'PREVIOUS_VALUE').as_frame()
 d_fx.columns = d_fx.columns.droplevel(-1)
 d_fx = d_fx.rename(columns = {'EURUSD Curncy':'EUR',
-                              'GBPUSD Curncy':'GBP'})
+                              'GBPUSD Curncy':'GBP',
+                              'CADUSD Curncy':'CAD',
+                              'JPYUSD Curncy':'JPY',
+                              'CHFUSD Curncy':'CHF'})
 d_fx['USD'] = 1.0
 
 
@@ -98,8 +106,9 @@ for i, v in q.items():
     
     b[i] = f[i]['$Assets'].unstack().fillna(0).apply(sum, axis=1).to_frame()
     b[i].columns = ['tot_$assets']
+    #b[i]['tot_$assets'] = winsorize(b[i]['tot_$assets'], limits = (0.05, 0.05))
     b[i]['$assets_pct_chg'] = b[i]['tot_$assets'].pct_change()
-    b[i]['$assets_log_chg'] = np.log(1 + b[i]['tot_$assets'].pct_change())
+    b[i]['$assets_log_chg'] = winsorize(np.log(1 + b[i]['tot_$assets'].pct_change()), limits = (0.01, 0.01))
     b[i]['$assets_log_chg'] = winsorize(b[i]['$assets_log_chg'], limits = (0.01, 0.01))
     b[i]['$diff'] = b[i]['tot_$assets'].diff()
             
@@ -115,7 +124,8 @@ for i, v in q.items():
     #create weekly changes
     u[i] = b[i][['$assets_log_chg', '$diff']].resample('W').sum()
     u[i]['scr_1y'] = zscore(u[i]['$assets_log_chg'])
-    u[i]['scr_6m'] = zscore(u[i]['$assets_log_chg'], '180d') 
+    #u[i]['scr_1y'] = u[i]['scr_1y'].item(), 3.5)
+    u[i]['scr_6m'] = zscore(u[i]['$assets_log_chg'], '180d')
     
     #create monthly changes
     pq[i] = b[i][['$assets_log_chg', '$diff']].resample('BM').sum()
