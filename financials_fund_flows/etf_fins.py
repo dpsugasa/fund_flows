@@ -31,15 +31,14 @@ def zscore(series, time='365d'):
     score =(series - series.rolling(window=time).mean())/series.rolling(window=time).std()
     return score
 
-
 # set dates, securities, and fields
 start_date = '01/01/2012'
 end_date = "{:%m/%d/%Y}".format(datetime.now())
 
 #read fund names from .csv
-cb = pd.read_csv(r'C:\Users\dpsugasa\WorkFiles\fund_flows\cb_fund_flows\cb_all_curr.csv',
+fins_etf = pd.read_csv(r'C:\Users\dpsugasa\WorkFiles\fund_flows\financials_fund_flows\etf_all_curr.csv',
                    parse_dates=True, infer_datetime_format=True)
-cb = cb['Ticker'].values.tolist()
+fins_etf = fins_etf['Ticker'].values.tolist()
 
 fx = ['EURUSD Curncy',
       'GBPUSD Curncy',
@@ -47,7 +46,7 @@ fx = ['EURUSD Curncy',
       'JPYUSD Curncy',
       'CHFUSD Curncy']
 
-q = {'cb': cb,
+q = {'fins_etf': fins_etf,
      #'booty': oe
      
      }
@@ -87,13 +86,10 @@ for i, v in q.items():
     #get ref data and underlying currency
     m[i] = LocalTerminal.get_reference_data(v,fields_ref).as_frame()
     #get asset data and calculate $Assets on a daily basis
-    d[i] = LocalTerminal.get_historical(v, fields_hist, start_date, end_date, period = 'DAILY').as_frame()
-                                         #non_trading_day_fill_option = 'ALL_CALENDAR_DAYS',
-                                         #non_trading_day_fill_method = 'PREVIOUS_VALUE').as_frame()
+    d[i] = LocalTerminal.get_historical(v, fields_hist, start_date, end_date, period = 'DAILY',
+                                         non_trading_day_fill_option = 'ALL_CALENDAR_DAYS',
+                                         non_trading_day_fill_method = 'PREVIOUS_VALUE').as_frame()
     d[i].columns = d[i].columns.droplevel(-1)
-    d[i] = d[i].fillna(method = 'bfill')
-    d[i] = d[i].fillna(method = 'ffill', limit = 10)
-    d[i] = d[i].dropna(axis=1)
 
     d[i] = d[i].unstack().to_frame()
     d[i].columns = d[i].columns.astype(str)
@@ -109,9 +105,8 @@ for i, v in q.items():
     
     b[i] = f[i]['$Assets'].unstack().fillna(0).apply(sum, axis=1).to_frame()
     b[i].columns = ['tot_$assets']
-    #b[i]['tot_$assets'] = winsorize(b[i]['tot_$assets'], limits = (0.05, 0.05))
     b[i]['$assets_pct_chg'] = b[i]['tot_$assets'].pct_change()
-    b[i]['$assets_log_chg'] = winsorize(np.log(1 + b[i]['tot_$assets'].pct_change()), limits = (0.01, 0.01))
+    b[i]['$assets_log_chg'] = np.log(1 + b[i]['tot_$assets'].pct_change())
     b[i]['$assets_log_chg'] = winsorize(b[i]['$assets_log_chg'], limits = (0.01, 0.01))
     b[i]['$diff'] = b[i]['tot_$assets'].diff()
             
@@ -127,8 +122,7 @@ for i, v in q.items():
     #create weekly changes
     u[i] = b[i][['$assets_log_chg', '$diff']].resample('W').sum()
     u[i]['scr_1y'] = zscore(u[i]['$assets_log_chg'])
-    #u[i]['scr_1y'] = u[i]['scr_1y'].item(), 3.5)
-    u[i]['scr_6m'] = zscore(u[i]['$assets_log_chg'], '180d')
+    u[i]['scr_6m'] = zscore(u[i]['$assets_log_chg'], '180d') 
     
     #create monthly changes
     pq[i] = b[i][['$assets_log_chg', '$diff']].resample('BM').sum()
@@ -175,13 +169,11 @@ for i, v in q.items():
     )       
         
     layout  = {'title' : f'{i} daily change - {date_now}',
-                   'xaxis' : {'title' : 'Date', 'type': 'date',
-                              'fixedrange': True},
-                   'yaxis' : {'title' : 'Z-Score', 'fixedrange': True},
+                   'xaxis' : {'title' : 'Date', 'type': 'date'},
+                   'yaxis' : {'title' : 'Z-Score'},
                    'yaxis2' : {'title' : 'Assets',
                                'overlaying' : 'y',
-                               'side'   : 'right',
-                               'fixedrange': True},
+                               'side'   : 'right'},
                    'shapes': [{'type': 'rect',
                               'x0': r[i]['scr_1y'].index[0],
                               'y0': -2,
@@ -227,13 +219,11 @@ for i, v in q.items():
     )       
         
     layout  = {'title' : f'{i} weekly change - {date_now}',
-                   'xaxis' : {'title' : 'Date', 'type': 'date',
-                              'fixedrange' : True},
-                   'yaxis' : {'title' : 'Z-Score', 'fixedrange': True},
+                   'xaxis' : {'title' : 'Date', 'type': 'date'},
+                   'yaxis' : {'title' : 'Z-Score'},
                    'yaxis2' : {'title' : 'Assets',
                                'overlaying' : 'y',
-                               'side'   : 'right',
-                               'fixedrange' : True},
+                               'side'   : 'right'},
                    'shapes': [{'type': 'rect',
                               'x0': u[i]['scr_1y'].index[0],
                               'y0': -2,
@@ -280,14 +270,11 @@ for i, v in q.items():
     )       
         
     layout  = {'title' : f'{i} monthly change - {date_now}',
-                   'xaxis' : {'title' : 'Date', 'type': 'date',
-                              'fixedrange': True},
-                   'yaxis' : {'title' : 'Z-Score',
-                              'fixedrange': True},
+                   'xaxis' : {'title' : 'Date', 'type': 'date'},
+                   'yaxis' : {'title' : 'Z-Score'},
                    'yaxis2' : {'title' : 'Assets',
                                'overlaying' : 'y',
-                               'side'   : 'right',
-                               'fixedrange': True},
+                               'side'   : 'right'},
                    'shapes': [{'type': 'rect',
                               'x0': pq[i]['scr_1y'].index[0],
                               'y0': -2,

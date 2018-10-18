@@ -37,9 +37,9 @@ start_date = '01/01/2012'
 end_date = "{:%m/%d/%Y}".format(datetime.now())
 
 #read fund names from .csv
-cb = pd.read_csv(r'C:\Users\dpsugasa\WorkFiles\fund_flows\cb_fund_flows\cb_all_curr.csv',
+ig_eu = pd.read_csv(r'C:\Users\dpsugasa\WorkFiles\fund_flows\ig_credit_europe_fund_flows\eu_ig_openend_allcurr.csv',
                    parse_dates=True, infer_datetime_format=True)
-cb = cb['Ticker'].values.tolist()
+ig_eu = ig_eu['Ticker'].values.tolist()
 
 fx = ['EURUSD Curncy',
       'GBPUSD Curncy',
@@ -47,7 +47,7 @@ fx = ['EURUSD Curncy',
       'JPYUSD Curncy',
       'CHFUSD Curncy']
 
-q = {'cb': cb,
+q = {'ig_eu': ig_eu,
      #'booty': oe
      
      }
